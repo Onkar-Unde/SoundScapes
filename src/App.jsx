@@ -542,8 +542,8 @@ function App() {
                         e.target.click();
                       }}
                     >
-                      <Square fill="currentColor" />
-                      <span>White Sound</span>
+                      <Square fill="brown" />
+                      <span>Hard Sound</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -562,7 +562,7 @@ function App() {
                       }}
                     >
                       <Square fill="pink" />
-                      <span>Pink Sound</span>
+                      <span>Medium Sound</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -579,8 +579,8 @@ function App() {
                         e.target.click();
                       }}
                     >
-                      <Square fill="brown" />
-                      <span>Brown Sound</span>
+                      <Square fill="white" />
+                      <span>Soft Sound</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
