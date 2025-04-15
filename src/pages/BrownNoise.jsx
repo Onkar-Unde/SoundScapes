@@ -46,7 +46,7 @@ function BrownNoise() {
 
   useEffect(() => {
     if (window.location.pathname === "/brown-noise") {
-      document.title = "Brown Noise - SoundScapes";
+      document.title = "Soft Sound - SoundScapes";
     }
     return () => {
       if (brownNoiseNodeRef.current) {
@@ -61,7 +61,7 @@ function BrownNoise() {
   return (
     <div className="brown-noise-player">
       <div className="controls">
-        <span className="mr-4">Brown Sound</span>
+        <span className="mr-4">Soft Sound</span>
         {!isPlaying ? (
           <Button variant="outline" onClick={playBrownNoise}>
             Play
@@ -74,8 +74,8 @@ function BrownNoise() {
         <br />
         <br />
         <p className="text-zinc-300">
-          ⚠︎ Please check your volume before playing. Although Brown Noise is a
-          lighter version of White Noise, it may still be loud, especially on
+          ⚠︎ Please check your volume before playing. Although Soft Sound is a
+          lighter version of Hard Sound, it may still be loud, especially on
           headphone.
         </p>
       </div>

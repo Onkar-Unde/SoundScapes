@@ -54,7 +54,7 @@ function PinkNoise() {
 
   useEffect(() => {
     if (window.location.pathname === "/pink-noise") {
-      document.title = "Pink Noise - SoundScapes";
+      document.title = "Mediam Sound - SoundScapes";
     }
     return () => {
       if (pinkNoiseNodeRef.current) {
@@ -69,7 +69,7 @@ function PinkNoise() {
   return (
     <div className="pink-noise-player">
       <div className="controls">
-        <span className="mr-4">Pink Sound</span>
+        <span className="mr-4">Medium Sound</span>
         {!isPlaying ? (
           <Button variant="outline" onClick={playPinkNoise}>
             Play
@@ -82,13 +82,13 @@ function PinkNoise() {
       </div>
       <br />
       <p className="text-orange-200">
-        ⚠︎ Please check your volume before playing. Pink Noise can be harsh and
+        ⚠︎ Please check your volume before playing. Medium Sound can be harsh and
         potentially harmful at high volumes. Start at a low volume and gradually
         increase it until you find a comfortable level. Try out{" "}
         <Link to="/brown-noise" className="text-orange-400 hover:underline">
-          Brown Sound
+          Soft Sound
         </Link>{" "}
-        if Pink Sound is too harsh.
+        if Medium Sound is too harsh.
       </p>
     </div>
   );

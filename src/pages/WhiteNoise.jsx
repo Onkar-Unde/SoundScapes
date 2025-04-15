@@ -51,7 +51,8 @@ function WhiteNoise() {
 
   useEffect(() => {
     if (window.location.pathname === "/white-noise") {
-      document.title = "White Noise - SoundScapes";
+       document.title = "Hard Sound - SoundScapes";
+     
     }
     return () => {
       if (whiteNoiseSourceRef.current) {
@@ -67,7 +68,7 @@ function WhiteNoise() {
   return (
     <div className="white-noise-player">
       <div className="controls">
-        <span className="mr-4">White Sound</span>
+        <span className="mr-4">Hard Sound</span>
         {!isPlaying ? (
           <Button variant="outline" onClick={playWhiteNoise}>
             Play
@@ -80,13 +81,13 @@ function WhiteNoise() {
         <br />
         <br />
         <p className="text-red-200">
-          ⚠︎ Please check your volume before playing. White Noise can be intense
+          ⚠︎ Please check your volume before playing.  Hard sound can be intense
           and potentially harmful at high volumes. Start at a low volume and
           gradually increase it until you find a comfortable level. Try out{" "}
           <Link to="/pink-noise" className="text-red-400 hover:underline">
-            Pink Sound
+            Medium Sound
           </Link>{" "}
-          if White Sound is too harsh.
+          if Hard Sound is too harsh.
         </p>
       </div>
     </div>

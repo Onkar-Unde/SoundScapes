@@ -39,7 +39,7 @@ function Settings() {
   return (
     <div className="settings-page px-6">
       <Button id="install-btn" style={{ display: "none" }}>
-        Install Noisefill
+        Install SoundScapes
       </Button>
       <br />
       <br />

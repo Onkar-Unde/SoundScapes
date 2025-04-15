@@ -631,7 +631,7 @@ function App() {
                 </SidebarMenuItem>
                 <SidebarMenuItem key={"github"}>
                   <a
-                    href="https://github.com/thingbomb/noisefill"
+                    href="https://github.com/Onkar-Unde/noisefill-main"
                     rel="noopener noreferrer"
                     onMouseDown={(e) => {
                       e.preventDefault();
