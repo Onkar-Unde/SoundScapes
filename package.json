@@ -1,4 +1,5 @@
 {
+    "homepage": "https://github.com/Onkar-Unde/SoundScapes",
     "name": "SoundScapes",
     "private": true,
     "version": "1.0.0",
@@ -8,7 +9,8 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "deploy": "vercel --prod"
+        "predeploy": "npm run build",
+        "deploy": "echo > dist/.nojekyll && gh-pages -d dist"
     },
     "dependencies": {
         "@fontsource-variable/inter": "^5.2.5",

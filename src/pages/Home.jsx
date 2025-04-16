@@ -16,6 +16,7 @@ import {
   soundscapes,
   savePlaylist,
   getPlaylists,
+  deletePlaylist,
 } from "../soundscapes";
 import audioRef from "../audioRef";
 import { Link } from "react-router-dom";
@@ -607,6 +608,73 @@ function Home({ currentURL, setCurrentURL }) {
     setPlaylistItems(playlistItems.filter((_, i) => i !== index));
   };
 
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/playlists');
+        const data = await response.json();
+        setPlaylists(data);
+      } catch (error) {
+        console.error('Error fetching playlists:', error);
+      }
+    };
+  
+    fetchPlaylists();
+  }, []);
+  
+  
+  const handleSavePlaylist = async () => {
+    if (!playlistName.trim()) {
+      alert("Please enter a playlist name");
+      return;
+    }
+  
+    if (playlistItems.length === 0) {
+      alert("Please add at least one soundscape to the playlist");
+      return;
+    }
+  
+    const playlistData = {
+      name: playlistName,
+      description: playlistDescription,
+      items: playlistItems,
+    };
+  
+    try {
+      let response;
+      if (editingPlaylist) {
+        // Update existing playlist
+        response = await fetch(`http://localhost:5000/api/playlists/${editingPlaylist._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(playlistData),
+        });
+      } else {
+        // Create new playlist
+        response = await fetch('http://localhost:5000/api/playlists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(playlistData),
+        });
+      }
+  
+      if (!response.ok) {
+        throw new Error('Failed to save playlist');
+      }
+  
+      // Refresh playlists
+      const updatedPlaylists = await fetch('http://localhost:5000/api/playlists').then(res => res.json());
+      setPlaylists(updatedPlaylists);
+      setShowPlaylistDialog(false);
+      setPlaylistName("");
+      setPlaylistDescription("");
+      setPlaylistItems([]);
+      setEditingPlaylist(null);
+    } catch (error) {
+      console.error('Error saving playlist:', error);
+    }
+  };
+
   const handleEditPlaylist = (playlist) => {
     setEditingPlaylist(playlist);
     setPlaylistName(playlist.name);
@@ -614,32 +682,8 @@ function Home({ currentURL, setCurrentURL }) {
     setPlaylistItems(playlist.items);
     setShowPlaylistDialog(true);
   };
-
-  const handleSavePlaylist = () => {
-    if (!playlistName.trim()) {
-      alert("Please enter a playlist name");
-      return;
-    }
-
-    if (playlistItems.length === 0) {
-      alert("Please add at least one soundscape to the playlist");
-      return;
-    }
-
-    const newPlaylist = savePlaylist(
-      playlistName,
-      playlistDescription,
-      playlistItems,
-      editingPlaylist?.id
-    );
-    setPlaylists(getPlaylists());
-    setShowPlaylistDialog(false);
-    setPlaylistName("");
-    setPlaylistDescription("");
-    setPlaylistItems([]);
-    setEditingPlaylist(null);
-  };
-
+  
+  
   const handleCloseDialog = () => {
     setShowPlaylistDialog(false);
     setPlaylistName("");
@@ -788,33 +832,36 @@ function Home({ currentURL, setCurrentURL }) {
 
   useEffect(() => {
     if (window.location.pathname === "/") {
-      document.title = "SoundScapes";
+      document.title = "Noisefill";
     }
   }, []);
 
-  const handleRemovePlaylist = (indexToRemove) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this playlist?");
+  const handleRemovePlaylist = async (playlistId) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this playlist?');
     if (!confirmDelete) return;
   
-    // Stop if the playlist being removed is currently playing
-    if (currentPlaylist && playlists[indexToRemove].name === currentPlaylist.name) {
-      stopPlaylist();
+    try {
+      const response = await fetch(`http://localhost:5000/api/playlists/${playlistId}`, {
+        method: 'DELETE',
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to delete playlist');
+      }
+  
+      // Remove the playlist from the state
+      setPlaylists((prevPlaylists) =>
+        prevPlaylists.filter((playlist) => playlist._id !== playlistId)
+      );
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
     }
-  
-    // Create a new list without the removed playlist
-    const updatedPlaylists = playlists.filter((_, index) => index !== indexToRemove);
-  
-    // Update state
-    setPlaylists(updatedPlaylists);
-  
-    // Update localStorage
-    localStorage.setItem("soundscapePlaylists", JSON.stringify(updatedPlaylists));
   };
   
   return (
     <div className="overflow-y-auto">
       <span className="text-gray-400">
-        SoundScapes did not make the soundscapes below and does not imply an
+        Noisefill did not make the soundscapes below and does not imply an
         endorsement/affiliation by the author.{" "}
         {new URL(window.location.href).hostname.startsWith("reversed.")
           ? "Soundscapes below have been reversed on Noisefill's part. "
@@ -901,199 +948,198 @@ function Home({ currentURL, setCurrentURL }) {
         <SleepTimer />
       </div>
       <br />
-  <div className="flex flex-col gap-2">
-  <div className="flex justify-between items-center">
-    <h1 className="text-xl font-semibold">Playlists</h1>
-    <Button
-      className="py-1 h-9"
-      variant="outline"
-      onClick={() => setShowPlaylistDialog(true)}
-    >
-      Create Playlist
-    </Button>
-  </div>
-
-  <Dialog open={showPlaylistDialog} onOpenChange={handleCloseDialog}>
-    <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>
-          {editingPlaylist ? "Edit Playlist" : "Create New Playlist"}
-        </DialogTitle>
-        <DialogDescription>
-          {editingPlaylist
-            ? "Edit your playlist settings and soundscapes."
-            : "Create a custom playlist of soundscapes with specific durations."}
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="grid gap-4 py-4">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Playlist Name</Label>
-          <Input
-            id="name"
-            value={playlistName}
-            onChange={(e) => setPlaylistName(e.target.value)}
-            placeholder="My Relaxation Mix"
-          />
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-semibold">Playlists</h1>
+          <Button
+            className="py-1 h-9"
+            variant="outline"
+            onClick={() => setShowPlaylistDialog(true)}
+          >
+            Create Playlist
+          </Button>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            value={playlistDescription}
-            onChange={(e) => setPlaylistDescription(e.target.value)}
-            placeholder="A calming mix of nature sounds"
-          />
-        </div>
+        <Dialog open={showPlaylistDialog} onOpenChange={handleCloseDialog}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPlaylist ? "Edit Playlist" : "Create New Playlist"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingPlaylist
+                  ? "Edit your playlist settings and soundscapes."
+                  : "Create a custom playlist of soundscapes with specific durations."}
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="grid gap-2">
-          <Label>Available Soundscapes</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {soundscapes.map((soundscape) => (
-              <Button
-                key={soundscape.index}
-                variant={
-                  playlistItems.some(
-                    (item) => item.soundscapeIndex === soundscape.index
-                  )
-                    ? "secondary"
-                    : "outline"
-                }
-                onClick={() => handleAddToPlaylist(soundscape)}
-                className="flex items-center gap-2"
-              >
-                <span>{soundscape.emoji}</span>
-                <span>{soundscape.name}</span>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Playlist Name</Label>
+                <Input
+                  id="name"
+                  value={playlistName}
+                  onChange={(e) => setPlaylistName(e.target.value)}
+                  placeholder="My Relaxation Mix"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={playlistDescription}
+                  onChange={(e) => setPlaylistDescription(e.target.value)}
+                  placeholder="A calming mix of nature sounds"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Available Soundscapes</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {soundscapes.map((soundscape) => (
+                    <Button
+                      key={soundscape.index}
+                      variant={
+                        playlistItems.some(
+                          (item) => item.soundscapeIndex === soundscape.index
+                        )
+                          ? "secondary"
+                          : "outline"
+                      }
+                      onClick={() => handleAddToPlaylist(soundscape)}
+                      className="flex items-center gap-2"
+                    >
+                      <span>{soundscape.emoji}</span>
+                      <span>{soundscape.name}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {playlistItems.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>Selected Soundscapes</Label>
+                  <div className="space-y-2">
+                    {playlistItems.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 border rounded"
+                      >
+                        <span className="flex items-center gap-1">
+                          <span>{soundscapes[item.soundscapeIndex].emoji}</span>
+                          <span>{soundscapes[item.soundscapeIndex].name}</span>
+                        </span>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.duration}
+                          onChange={(e) =>
+                            handleUpdateDuration(index, e.target.value)
+                          }
+                          className="w-20"
+                        />
+                        <span>minutes</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFromPlaylist(index)}
+                          className="ml-auto"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button onClick={handleSavePlaylist}>
+                {editingPlaylist ? "Save Changes" : "Save Playlist"}
               </Button>
-            ))}
-          </div>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {playlistItems.length > 0 && (
-          <div className="grid gap-2">
-            <Label>Selected Soundscapes</Label>
-            <div className="space-y-2">
-              {playlistItems.map((item, index) => (
+        {playlists.length > 0 && (
+          <div>
+            <div className="grid gap-4">
+              {playlists.map((playlist, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 p-2 border rounded"
+                  className="border p-4 rounded-lg bg-background border-input"
                 >
-                  <span className="flex items-center gap-1">
-                    <span>{soundscapes[item.soundscapeIndex].emoji}</span>
-                    <span>{soundscapes[item.soundscapeIndex].name}</span>
-                  </span>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={item.duration}
-                    onChange={(e) =>
-                      handleUpdateDuration(index, e.target.value)
-                    }
-                    className="w-20"
-                  />
-                  <span>minutes</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveFromPlaylist(index)}
-                    className="ml-auto"
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-lg">{playlist.name}</h4>
+                      <p className="text-[14.5px] text-zinc-400">
+                        {playlist.description}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {currentPlaylist?.name === playlist.name ? (
+                        <Button onClick={stopPlaylist} variant="destructive">
+                          Stop Playlist
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={() => handleEditPlaylist(playlist)}
+                            variant="outline"
+                            className="h-9"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                      onClick={() => handleRemovePlaylist(playlist._id)}
+                      variant="outline"
+                      className="h-9 text-red-500"
+                    >
+                      Remove
+                    </Button>
+                          <Button
+                            onClick={() => playPlaylist(playlist)}
+                            className="h-9"
+                          >
+                            Play Playlist
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {playlist.items.map((item, itemIndex) => (
+                      <div
+                        key={itemIndex}
+                        className={`text-sm flex items-center gap-1 p-1 rounded ${
+                          currentPlaylist?.name === playlist.name &&
+                          currentPlaylistIndex === itemIndex
+                            ? "bg-gray-900"
+                            : ""
+                        }`}
+                      >
+                        <span>{soundscapes[item.soundscapeIndex].emoji}</span>
+                        <span>{soundscapes[item.soundscapeIndex].name}</span>
+                        <span className="text-zinc-400">
+                          - {item.duration} minutes
+                        </span>
+                        {currentPlaylist?.name === playlist.name &&
+                          currentPlaylistIndex === itemIndex && (
+                            <span className="ml-2 text-blue-500">
+                              {playing ? "⏸︎ Playing" : "▶︎ Paused"}
+                            </span>
+                          )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
-
-      <DialogFooter>
-        <Button onClick={handleSavePlaylist}>
-          {editingPlaylist ? "Save Changes" : "Save Playlist"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-
-  {playlists.length > 0 && (
-    <div>
-      <div className="grid gap-4">
-        {playlists.map((playlist, index) => (
-          <div
-            key={index}
-            className="border p-4 rounded-lg bg-background border-input"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-semibold text-lg">{playlist.name}</h4>
-                <p className="text-[14.5px] text-zinc-400">
-                  {playlist.description}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {currentPlaylist?.name === playlist.name ? (
-                  <Button onClick={stopPlaylist} variant="destructive">
-                    Stop Playlist
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => handleEditPlaylist(playlist)}
-                      variant="outline"
-                      className="h-9"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => playPlaylist(playlist)}
-                      className="h-9"
-                    >
-                      Play Playlist
-                    </Button>
-                    <Button
-                      onClick={() => handleRemovePlaylist(index)}
-                      variant="outline"
-                      className="h-9 text-red-500"
-                    >
-                      Remove
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="mt-2 space-y-1">
-              {playlist.items.map((item, itemIndex) => (
-                <div
-                  key={itemIndex}
-                  className={`text-sm flex items-center gap-1 p-1 rounded ${
-                    currentPlaylist?.name === playlist.name &&
-                    currentPlaylistIndex === itemIndex
-                      ? "bg-gray-900"
-                      : ""
-                  }`}
-                >
-                  <span>{soundscapes[item.soundscapeIndex].emoji}</span>
-                  <span>{soundscapes[item.soundscapeIndex].name}</span>
-                  <span className="text-zinc-400">
-                    - {item.duration} minutes
-                  </span>
-                  {currentPlaylist?.name === playlist.name &&
-                    currentPlaylistIndex === itemIndex && (
-                      <span className="ml-2 text-blue-500">
-                        {playing ? "⏸︎ Playing" : "▶︎ Paused"}
-                      </span>
-                    )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )}
-</div>
-
       {currentURL && (
         <>
           <br />
