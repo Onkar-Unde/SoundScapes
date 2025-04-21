@@ -611,59 +611,63 @@ function Home({ currentURL, setCurrentURL }) {
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/playlists');
+        const response = await fetch("http://localhost:5000/api/playlists");
         const data = await response.json();
         setPlaylists(data);
       } catch (error) {
-        console.error('Error fetching playlists:', error);
+        console.error("Error fetching playlists:", error);
       }
     };
-  
+
     fetchPlaylists();
   }, []);
-  
-  
+
   const handleSavePlaylist = async () => {
     if (!playlistName.trim()) {
       alert("Please enter a playlist name");
       return;
     }
-  
+
     if (playlistItems.length === 0) {
       alert("Please add at least one soundscape to the playlist");
       return;
     }
-  
+
     const playlistData = {
       name: playlistName,
       description: playlistDescription,
       items: playlistItems,
     };
-  
+
     try {
       let response;
       if (editingPlaylist) {
         // Update existing playlist
-        response = await fetch(`http://localhost:5000/api/playlists/${editingPlaylist._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(playlistData),
-        });
+        response = await fetch(
+          `http://localhost:5000/api/playlists/${editingPlaylist._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(playlistData),
+          }
+        );
       } else {
         // Create new playlist
-        response = await fetch('http://localhost:5000/api/playlists', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        response = await fetch("http://localhost:5000/api/playlists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(playlistData),
         });
       }
-  
+
       if (!response.ok) {
-        throw new Error('Failed to save playlist');
+        throw new Error("Failed to save playlist");
       }
-  
+
       // Refresh playlists
-      const updatedPlaylists = await fetch('http://localhost:5000/api/playlists').then(res => res.json());
+      const updatedPlaylists = await fetch(
+        "http://localhost:5000/api/playlists"
+      ).then((res) => res.json());
       setPlaylists(updatedPlaylists);
       setShowPlaylistDialog(false);
       setPlaylistName("");
@@ -671,7 +675,7 @@ function Home({ currentURL, setCurrentURL }) {
       setPlaylistItems([]);
       setEditingPlaylist(null);
     } catch (error) {
-      console.error('Error saving playlist:', error);
+      console.error("Error saving playlist:", error);
     }
   };
 
@@ -682,8 +686,7 @@ function Home({ currentURL, setCurrentURL }) {
     setPlaylistItems(playlist.items);
     setShowPlaylistDialog(true);
   };
-  
-  
+
   const handleCloseDialog = () => {
     setShowPlaylistDialog(false);
     setPlaylistName("");
@@ -764,100 +767,98 @@ function Home({ currentURL, setCurrentURL }) {
     );
   };
 
-  const playPlaylistItem = (playlist, index) => {
-    if (index >= playlist.items.length) {
-      playPlaylistItem(playlist, 0);
+  const playPlaylistItem = (playlist) => {
+    if (!playlist || !playlist.items || playlist.items.length === 0) {
+      console.warn("No items in the playlist.");
       return;
     }
 
-    const item = playlist.items[index];
-    const soundscape = soundscapes[item.soundscapeIndex];
+    // Stop any currently playing audios
+    stopPlaylist();
 
-    const audio = audioRef.current || document.getElementById("player");
-    audio.src = soundscape.url;
-    // Set all necessary attributes for the media bar to update properly
-    audio.title = soundscape.name;
-    audio.setAttribute("image", soundscape.image);
-    audio.setAttribute("index", soundscape.index);
-    // Set volume directly from soundscape
-    audio.volume = soundscape.volume || 1.0;
-    setCurrentURL(soundscape.url);
+    // Initialize an array to keep track of active audio elements
+    window.activeAudios = [];
+
+    playlist.items.forEach((item) => {
+      const soundscape = soundscapes[item.soundscapeIndex];
+
+      if (!soundscape || !soundscape.url) {
+        console.error("Missing or invalid soundscape:", soundscape);
+        return;
+      }
+
+      const audio = new Audio(soundscape.url);
+      audio.title = soundscape.name;
+      audio.setAttribute("image", soundscape.image || "");
+      audio.setAttribute("index", soundscape.index);
+      audio.volume = soundscape.volume ?? 1.0;
+      audio.loop = false;
+
+      audio.play().catch((err) => {
+        console.error(`Error playing soundscape ${soundscape.name}:`, err);
+      });
+
+      window.activeAudios.push(audio);
+    });
+
+    // Update state/UI as needed
+    setCurrentURL("Multiple soundscapes playing");
     setPlaying(true);
-
-    // Play the audio
-    audio.play();
-
-    // Set message
-    setMessage(
-      `Playing playlist: ${playlist.name} - ${soundscape.name} (${item.duration} minutes)`
-    );
-
-    // Set up playlist state
+    setMessage(`Playing all sounds from playlist: ${playlist.name}`);
     setCurrentPlaylist(playlist);
-    setCurrentPlaylistIndex(index);
+    setCurrentPlaylistIndex(-1); // -1 indicates simultaneous playback
 
-    // Dispatch event to notify App component about playlist item change
     window.dispatchEvent(
       new CustomEvent("playlist-change", {
-        detail: { playlist, index },
+        detail: { playlist, index: -1 },
       })
     );
-
-    // Set timer for next track
-    const minutes = parseInt(item.duration);
-    clearTimeout(playlistTimer);
-    const timer = setTimeout(() => {
-      playPlaylistItem(playlist, index + 1);
-    }, minutes * 60 * 1000);
-
-    setPlaylistTimer(timer);
   };
 
   const stopPlaylist = () => {
-    if (playlistTimer) {
-      clearTimeout(playlistTimer);
+    if (window.activeAudios && Array.isArray(window.activeAudios)) {
+      window.activeAudios.forEach((audio) => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      window.activeAudios = [];
     }
-    setCurrentPlaylist(null);
-    setCurrentPlaylistIndex(0);
-    setPlaylistTimer(null);
-
-    const audio = audioRef.current || document.getElementById("player");
-    audio.pause();
-    setPlaying(false);
-    setMessage("");
-
-    // Dispatch event to notify App component that playlist has stopped
-    window.dispatchEvent(new CustomEvent("playlist-stop"));
+    playPlaylist();
   };
 
   useEffect(() => {
     if (window.location.pathname === "/") {
-      document.title = "Noisefill";
+      document.title = "SoundScapes";
     }
   }, []);
 
   const handleRemovePlaylist = async (playlistId) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this playlist?');
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this playlist?"
+    );
     if (!confirmDelete) return;
-  
+
     try {
-      const response = await fetch(`http://localhost:5000/api/playlists/${playlistId}`, {
-        method: 'DELETE',
-      });
-  
+      const response = await fetch(
+        `http://localhost:5000/api/playlists/${playlistId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
       if (!response.ok) {
-        throw new Error('Failed to delete playlist');
+        throw new Error("Failed to delete playlist");
       }
-  
+
       // Remove the playlist from the state
       setPlaylists((prevPlaylists) =>
         prevPlaylists.filter((playlist) => playlist._id !== playlistId)
       );
     } catch (error) {
-      console.error('Error deleting playlist:', error);
+      console.error("Error deleting playlist:", error);
     }
   };
-  
+
   return (
     <div className="overflow-y-auto">
       <span className="text-gray-400">
@@ -1043,7 +1044,7 @@ function Home({ currentURL, setCurrentURL }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveFromPlaylist(index)}
+                          onClick={() => handleRemoveFromPlaylist(playlist._id)}
                           className="ml-auto"
                         >
                           Remove
@@ -1073,7 +1074,7 @@ function Home({ currentURL, setCurrentURL }) {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-semibold text-lg">{playlist.name}</h4>
+                      <h4 className="font-semibold text-lg">{index}</h4>
                       <p className="text-[14.5px] text-zinc-400">
                         {playlist.description}
                       </p>
@@ -1093,12 +1094,12 @@ function Home({ currentURL, setCurrentURL }) {
                             Edit
                           </Button>
                           <Button
-                      onClick={() => handleRemovePlaylist(playlist._id)}
-                      variant="outline"
-                      className="h-9 text-red-500"
-                    >
-                      Remove
-                    </Button>
+                            onClick={() => handleRemovePlaylist(playlist._id)}
+                            variant="outline"
+                            className="h-9 text-red-500"
+                          >
+                            Remove
+                          </Button>
                           <Button
                             onClick={() => playPlaylist(playlist)}
                             className="h-9"
@@ -1131,6 +1132,29 @@ function Home({ currentURL, setCurrentURL }) {
                               {playing ? "⏸︎ Playing" : "▶︎ Paused"}
                             </span>
                           )}
+                        {playlist.items.slice(0,1).map((item, itemIndex) => {
+                          const audio = window.activeAudios?.[itemIndex];
+
+                          return (
+                            <div key={item.soundscapeIndex}>
+                              <input
+                                type="range"
+                                min={0}
+                                max={100}
+                                defaultValue={
+                                  audio?.volume ? audio.volume * 100 : 100
+                                }
+                                onChange={(e) => {
+                                  const volume =
+                                    parseInt(e.target.value, 10) / 100;
+                                  if (audio) {
+                                    audio.volume = volume;
+                                  }
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
